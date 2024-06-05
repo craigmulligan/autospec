@@ -125,7 +125,7 @@ instructions:
     - You only provide the parameters that are required for that action type
       enumerated above.
 
-    A PlanActionStep is a JSON object that follows the following schema:
+    A PlanActionStep is a valid JSON object that follows the following schema:
 
     type PlanActionStep =
     {
@@ -140,7 +140,7 @@ instructions:
 `;
 
 const removeColorsFormat = winston.format((info) => {
-    info.message = stripAnsi(info.message);
+    info.message = stripAnsi(info.message || "");
     return info;
 });
 

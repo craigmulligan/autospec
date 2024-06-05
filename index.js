@@ -10,10 +10,11 @@ import { createCanvas, loadImage } from "canvas";
 dotenv.config();
 
 const testUrl = process.env.URL || "http://localhost:3000";
-const globalLimitToNumberOfSpecs = process.env.LIMIT_TO_NUMBER_OF_SPECS || 10;
+const globalLimitToNumberOfSpecs = process.env.LIMIT_TO_NUMBER_OF_SPECS || 1;
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
+    baseURL: "http://localhost:1234/v1",
 });
 
 const magicStrings = {
@@ -36,8 +37,10 @@ instructions:
       going to run these checks immediately after you describe the
       application, so if you describe it too literally or reliant on the
       current state like strings, you may be overfitting.
-    - You only respond with only the JSON array of your test plan and
-      nothing else, without prefixes or suffixes.
+    - You respond with the JSON array of your test plan only,
+      without prefixes or suffixes. You never prefix it with backticks or \`
+      or anything like that.
+
     - The array should be an array of strings, with no further object
       complexity (we will call these 'specs').
     - Covering the most amount of user journeys with the fewest amount of
@@ -481,7 +484,8 @@ async function runTestSpec({
 
             let action;
             try {
-                action = JSON.parse(feedback);
+                const fb = JSON.parse(feedback);
+                action = Array.isArray(fb) ? fb[0] : fb;
             } catch (e) {
                 logger.error("Failed to parse action", feedback);
                 logger.error(e);
@@ -560,31 +564,37 @@ async function executeAction({
     try {
         switch (action.action) {
             case "hoverOver":
-                await page.locator(action.cssSelector).nth(action.nth).hover();
+                await page
+                    .locator(action.cssSelector)
+                    .nth(action.nth || 0)
+                    .hover();
                 break;
             case "clickOn":
-                await page.locator(action.cssSelector).nth(action.nth).click();
+                await page
+                    .locator(action.cssSelector)
+                    .nth(action.nth || 0)
+                    .click();
                 break;
             case "doubleClickOn":
                 await page
                     .locator(action.cssSelector)
-                    .nth(action.nth)
+                    .nth(action.nth || 0)
                     .dblclick();
                 break;
             case "keyboardInputString":
                 await page
                     .locator(action.cssSelector)
-                    .nth(action.nth)
+                    .nth(action.nth || 0)
                     .fill(action.string);
                 break;
             case "keyboardInputSingleKey":
                 await page
                     .locator(action.cssSelector)
-                    .nth(action.nth)
+                    .nth(action.nth || 0)
                     .press(action.key);
                 break;
             case "scroll":
-                await page.mouse.wheel(action.deltaX, action.deltaY);
+                await page.mouse.wheel(action.deltaX || 0, action.deltaY || 0);
                 break;
             case "hardWait":
                 await page.waitForTimeout(action.milliseconds);

@@ -75,7 +75,7 @@ const ariaRoles = [
 
 const ariaSelectorSchema = z.object({
     role: z.enum(ariaRoles),
-    options: z.object({
+    ariaOptions: z.object({
         name: z.string().optional(),
         hidden: z.boolean().optional(),
         level: z.number().optional(),

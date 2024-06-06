@@ -85,7 +85,7 @@ async function executeAction(page, action) {
                 await page
                     .getByRole(
                         action.ariaSelector.role,
-                        action.ariaSelector.options,
+                        action.ariaSelector.ariaOptions,
                     )
                     .hover();
                 break;
@@ -93,7 +93,7 @@ async function executeAction(page, action) {
                 await page
                     .getByRole(
                         action.ariaSelector.role,
-                        action.ariaSelector.options,
+                        action.ariaSelector.ariaOptions,
                     )
                     .click();
                 break;
@@ -101,7 +101,7 @@ async function executeAction(page, action) {
                 await page
                     .getByRole(
                         action.ariaSelector.role,
-                        action.ariaSelector.options,
+                        action.ariaSelector.ariaOptions,
                     )
                     .dblclick();
                 break;
@@ -109,7 +109,7 @@ async function executeAction(page, action) {
                 await page
                     .getByRole(
                         action.ariaSelector.role,
-                        action.ariaSelector.options,
+                        action.ariaSelector.ariaOptions,
                     )
                     .fill(action.string);
                 break;
@@ -117,7 +117,7 @@ async function executeAction(page, action) {
                 await page
                     .getByRole(
                         action.ariaSelector.role,
-                        action.ariaSelector.options,
+                        action.ariaSelector.ariaOptions,
                     )
                     .press(action.key);
                 break;
@@ -140,6 +140,7 @@ async function executeAction(page, action) {
         await page.waitForTimeout(50);
         return { complete: false, result: null };
     } catch (error) {
+        console.log(error);
         console.error(
             "Error executing action:",
             JSON.stringify(action, null, 2),
@@ -164,6 +165,18 @@ async function executeSpec(browser, { url, spec }) {
         The user messages will be in the format:
             URL: <url>
             Accessiblity Tree: <tree>
+
+        Here is an example of an action schema response: 
+        {
+          action: {
+              actionType: 'keyboardInputString',
+              ariaSelector: { 
+                role: 'textbox',
+                ariaOptions: { name: 'New Todo Input' }
+              },
+              string: 'Test Todo'
+          },
+        }
         `;
 
     const schema = z.object({
@@ -195,7 +208,9 @@ async function executeSpec(browser, { url, spec }) {
             system: systemPrompt,
         });
         const actionResult = await executeAction(page, result.object.action);
-        console.log(`executed: ${result.object.action.actionType}`);
+
+        console.log(actionResult);
+        // console.log(`executed: ${result.object.action.actionType}`);
 
         if (actionResult.complete) {
             console.log(actionResult);

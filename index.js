@@ -26,7 +26,7 @@ You are an automated QA agent tasked with testing a web application just as
 software engineer assigned to manual testing would. Here are your
 instructions:
 
-1. At first, you'll be given a screenshot or series of screenshots mapping
+1. At first, you'll be given an accessibility tree or series of accessibility tree mapping
    out the current behavior of the application. Describe the application and
    then provide a JSON array of formal checks that you will carry out.
 
@@ -46,14 +46,10 @@ instructions:
 2. After the mapping and description phase, you'll be provided a spec that
    you wrote to focus on specifically, one at a time. You'll begin a loop
    executing actions in order to fulfill the spec. On each turn, you'll be
-   provided a screenshot, a HTML dump, and the current
-   mouse cursor position and other metadata.
+   provided an accessibility tree and other metadata.
     
     - Your goal is to interact only with the elements necessary to fulfill
       the current spec.
-    - The red dot in the screenshot is your current mouse cursor position.
-      The X and Y coordinates of the mouse cursor are in the 1024x1024
-      coordinate system.
     - Focus on inputs is not always clearly visible. You always check that
       the mouse cursor is correctly positioned over the target element
       before you proceed with any clicking or typing actions. If the cursor
@@ -69,22 +65,11 @@ instructions:
     - You always adjust your mouse position to the correct location before
       clicking or proceeding with interactions if it seems like your mouse
       position is off.
-    - You are always provided with a screenshot AND a copy of the current
-      rendered HTML of the page. You can use the HTML to cross-reference
-      with the screenshot to make sure you are interacting with the correct
-      elements.
-    - You always make up appropriate cssSelectors based on the HTML
-      snapshot, by relating the HTML snapshot to the screenshot you are
-      provided, and then coming up with a valid css selector that you can
-      use to interact with the element in question. You always use the nth
-      property to disambiguate between multiple elements that match the same
-      selector. Nth is 0-indexed.
-    - When creating CSS selectors, ensure they are unique and specific
+    - You always make up appropriate accessibility selectors based on the 
+      accessibility tree provided.
+    - When creating accessibility selectors, ensure they are unique and specific
       enough to select only one element, even if there are multiple elements
       of the same type (like multiple h1 elements).
-    - Avoid using generic tags like 'h1' alone. Instead, combine them with
-      other attributes or structural relationships to form a unique
-      selector.
 
 3. You have an API of actions you can take: type Action = { action: String;
     cssSelector?: String; nth?: Number; string?: String; key?: String;
@@ -94,12 +79,11 @@ instructions:
 
     The possible actions are:
     [
-        { action:"hoverOver"; cssSelector: String; nth: Number },
-        { action:"clickOn", cssSelector: String; nth: Number },
-        { action:"doubleClickOn"; cssSelector: String; nth: Number },
-        { action:"keyboardInputString"; cssSelector: String; nth: Number; string:String },
-        { action:"keyboardInputSingleKey"; cssSelector: String; nth: Number; key:String },
-        { action:"scroll"; deltaX:Number; deltaY:Number },
+        { action:"hoverOver"; role: String; Aria Options: Object },
+        { action:"clickOn", role: String; Aria Options: Object },
+        { action:"doubleClickOn"; role: String; nth: Number },
+        { action:"keyboardInputString"; role: String; nth: Number; string:String },
+        { action:"keyboardInputSingleKey"; role: String; nth: Number; key:String },
         { action:"hardWait"; milliseconds: Number },
         { action:"gotoURL"; url: String },
         {
@@ -110,10 +94,10 @@ instructions:
         },
     ];
 
-    - If the screenshot already provided you enough information to answer
+    - If the accessibility tree already provided you enough information to answer
       this spec completely and say that the spec has passed, you will mark
       the spec as complete with appropriate API call and reason.
-    - If the screenshot already provided you enough information to answer
+    - If the accessibility tree already provided you enough information to answer
       this spec completely and say that the spec has failed in your
       judgement, you will mark the spec as complete with appropriate API
       call and reason.
@@ -604,31 +588,6 @@ async function executeAction({
         logger.error("Error executing action:", error);
         return { error, success: false };
     }
-}
-
-// For now, let's leave client in
-// eslint-disable-next-line no-unused-vars
-async function saveScreenshotWithCursor({ page, path, client }) {
-    // Capture the HTML snapshot
-    const html = await page.content();
-    fs.writeFileSync(path.replace(".png", ".html"), html);
-
-    // Capture screenshot with cursor
-    const { x, y } = await page.evaluate(() => window.getMousePosition());
-    const screenshotBuffer = await page.screenshot();
-    const img = await loadImage(screenshotBuffer);
-    const canvas = createCanvas(img.width, img.height);
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0);
-    ctx.fillStyle = "red";
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fill();
-
-    const out = fs.createWriteStream(path);
-    const stream = canvas.createPNGStream();
-    stream.pipe(out);
-    await new Promise((resolve) => out.on("finish", resolve));
 }
 
 function printTestResults() {

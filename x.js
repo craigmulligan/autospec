@@ -4,6 +4,7 @@ import { z } from "zod";
 import { actionSchema } from "./schemas.js";
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
+import { sleep } from "openai/core.js";
 
 dotenv.config();
 
@@ -79,6 +80,7 @@ async function generateTestSpecs(accessibilityTrees) {
 }
 
 async function executeAction(page, action) {
+    console.log("executing action: ", JSON.stringify(action, null, 2));
     try {
         switch (action.actionType) {
             case "hoverOver":
@@ -151,12 +153,15 @@ async function executeAction(page, action) {
 }
 
 async function executeSpec(browser, { url, spec }) {
+    console.log("executing spec", { url, spec });
     const systemPrompt = `
         You are a test-automation agent. You can execute tests by driving a playwright browser via the described actions API.
 
         You are to execute tasks for the following test spec: ${spec}
 
         You should only respond with via the action object in order to drive your playwright test browser and complete the test.
+
+        You should use as few steps as possible to complete the test.
 
         After each step you'll receive the current url and the new Accessibility Tree.
 
@@ -206,16 +211,16 @@ async function executeSpec(browser, { url, spec }) {
             prompt,
             schema,
             system: systemPrompt,
+            mode: "json",
         });
+
         const actionResult = await executeAction(page, result.object.action);
 
-        console.log(actionResult);
-        // console.log(`executed: ${result.object.action.actionType}`);
-
         if (actionResult.complete) {
-            console.log(actionResult);
             return;
         }
+
+        await sleep(500);
     }
 }
 
@@ -223,12 +228,12 @@ async function executeSpec(browser, { url, spec }) {
     const browser = await chromium.launch({ headless: true });
     const browserContext = await browser.newContext();
     const startUrl = "https://todomvc.com/examples/react/dist/#/";
-    const trees = await captureAccessibilityTrees(browserContext, startUrl);
+    // const trees = await captureAccessibilityTrees(browserContext, startUrl);
     // console.log(trees.map((t) => t.url));
     // const specs = await generateTestSpecs(trees);
     //
     // console.log(JSON.stringify(specs, null, 2));
-    const specs = [
+    const pageSpecs = [
         {
             url: "https://todomvc.com/examples/react/dist/#/",
             specs: [
@@ -242,7 +247,8 @@ async function executeSpec(browser, { url, spec }) {
             ],
         },
     ];
-    await executeSpec(browser, specs[0]);
-
-    await browserContext.close();
+    await executeSpec(browser, {
+        url: pageSpecs[0].url,
+        spec: "User should be able to create a TODO item",
+    });
 })();
